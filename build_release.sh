@@ -22,7 +22,7 @@ cargo update
 
 # Linux x86_64
 echo "Building for Linux (x86_64)..."
-cargo build --release --target x86_64-unknown-linux-gnu
+cross build --release --target x86_64-unknown-linux-gnu
 mkdir -p "$RELEASE_DIR/linux-x86_64"
 cp target/x86_64-unknown-linux-gnu/release/tuitype "$RELEASE_DIR/linux-x86_64/"
 tar -czf "$RELEASE_DIR/tuitype-v$VERSION-linux-x86_64.tar.gz" -C "$RELEASE_DIR/linux-x86_64" tuitype
