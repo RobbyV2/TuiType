@@ -45,22 +45,42 @@ fn draw_top_menu(app: &App, frame: &mut Frame, area: Rect) {
         }
     );
 
-    let menu_titles = vec!["Test", "Theme", "Settings", "Help"];
+    // Format current settings to display at the top
+    let test_mode_str = match app.config.test_mode {
+        crate::config::TestMode::Timed(secs) => format!("Mode: Timed {}s", secs),
+        crate::config::TestMode::Words(count) => format!("Mode: Words {}", count),
+        crate::config::TestMode::Quote => "Mode: Quote".to_string(),
+        crate::config::TestMode::Custom => "Mode: Custom".to_string(),
+    };
 
-    let menu = Tabs::new(menu_titles.iter().cloned().map(Line::from).collect())
+    let diff_str = match app.config.difficulty {
+        crate::config::Difficulty::Easy => "Difficulty: Easy",
+        crate::config::Difficulty::Medium => "Difficulty: Medium",
+        crate::config::Difficulty::Hard => "Difficulty: Hard",
+        crate::config::Difficulty::Custom => "Difficulty: Custom",
+    };
+
+    let settings_info = format!(
+        "{}  |  {}  |  End on Error: {}  |  Press ESC for menu",
+        test_mode_str,
+        diff_str,
+        if app.config.end_on_first_error {
+            "Yes"
+        } else {
+            "No"
+        }
+    );
+
+    let paragraph = Paragraph::new(settings_info)
         .block(Block::default().borders(Borders::ALL).title(title))
-        .highlight_style(
-            Style::default()
-                .fg(Color::Rgb(
-                    app.theme.accent.0,
-                    app.theme.accent.1,
-                    app.theme.accent.2,
-                ))
-                .add_modifier(Modifier::BOLD),
-        )
-        .divider("|");
+        .style(Style::default().fg(Color::Rgb(
+            app.theme.text.0,
+            app.theme.text.1,
+            app.theme.text.2,
+        )))
+        .alignment(Alignment::Center);
 
-    frame.render_widget(menu, area);
+    frame.render_widget(paragraph, area);
 }
 
 fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
@@ -361,7 +381,7 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
 fn draw_stats(app: &App, frame: &mut Frame, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
+        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(area);
 
     draw_gauges(app, frame, chunks[0]);
@@ -372,28 +392,8 @@ fn draw_stats(app: &App, frame: &mut Frame, area: Rect) {
 fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
-
-    let wpm_label = format!("WPM: {:.1}", app.stats.wpm);
-    let wpm_gauge = Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Words Per Minute"),
-        )
-        .gauge_style(Style::default().fg(Color::Rgb(
-            app.theme.accent.0,
-            app.theme.accent.1,
-            app.theme.accent.2,
-        )))
-        .percent((app.stats.wpm as u16).clamp(0, 100))
-        .label(wpm_label);
-    frame.render_widget(wpm_gauge, chunks[0]);
 
     let accuracy_label = format!("Accuracy: {:.1}%", app.stats.accuracy);
     let accuracy_gauge = Gauge::default()
@@ -405,8 +405,9 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
         )))
         .percent((app.stats.accuracy as u16).min(100))
         .label(accuracy_label);
-    frame.render_widget(accuracy_gauge, chunks[1]);
+    frame.render_widget(accuracy_gauge, chunks[0]);
 
+    // Calculate progress for the current test
     let progress = if app.text_source.full_text().is_empty() {
         0
     } else if app.text_source.is_scrollable {
@@ -422,6 +423,7 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
             / app.text_source.full_text().len()) as u16
     };
 
+    // Always display progress as a visible bar
     let progress_label = format!("Progress: {}%", progress);
     let progress_gauge = Gauge::default()
         .block(Block::default().borders(Borders::ALL).title("Progress"))
@@ -432,7 +434,7 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
         )))
         .percent(progress.clamp(0, 100))
         .label(progress_label);
-    frame.render_widget(progress_gauge, chunks[2]);
+    frame.render_widget(progress_gauge, chunks[1]);
 }
 
 fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
