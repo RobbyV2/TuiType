@@ -34,7 +34,7 @@ impl InputHandler {
             return Ok(Some(Event::Tick));
         }
 
-        if event::poll(Duration::from_millis(0))? {
+        if event::poll(Duration::from_millis(1))? {
             match event::read()? {
                 CrosstermEvent::Key(key) => {
                     return Ok(Some(Event::Key(key)));
@@ -44,16 +44,7 @@ impl InputHandler {
                 _ => Ok(None),
             }
         } else {
-            if event::poll(Duration::from_millis(5))? {
-                match event::read()? {
-                    CrosstermEvent::Key(key) => Ok(Some(Event::Key(key))),
-                    CrosstermEvent::Mouse(e) => Ok(Some(Event::Mouse(e))),
-                    CrosstermEvent::Resize(w, h) => Ok(Some(Event::Resize(w, h))),
-                    _ => Ok(None),
-                }
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 }

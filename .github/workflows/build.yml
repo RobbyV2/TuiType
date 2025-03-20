@@ -1,0 +1,120 @@
+name: Build and Publish TuiType
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions: write-all
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build Multi-Platform
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Install Cross
+        run: cargo install cross
+
+      - name: Build Native
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p release
+          if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
+            cp target/${{ matrix.target }}/release/tuitype.exe release/tuitype-x64.exe
+          elif [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then
+            cp target/${{ matrix.target }}/release/tuitype release/tuitype-linux-x64
+            chmod +x release/tuitype-linux-x64
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuitype-${{ matrix.target }}
+          path: release/*
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      discussions: write
+      pull-requests: write
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '.') && startsWith(github.event.head_commit.message, '0.') || startsWith(github.event.head_commit.message, '1.') || startsWith(github.event.head_commit.message, '2.') || startsWith(github.event.head_commit.message, '3.') || startsWith(github.event.head_commit.message, '4.') || startsWith(github.event.head_commit.message, '5.') || startsWith(github.event.head_commit.message, '6.') || startsWith(github.event.head_commit.message, '7.') || startsWith(github.event.head_commit.message, '8.') || startsWith(github.event.head_commit.message, '9.')
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Create Git Tag
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          TAG_NAME=$(git log -1 --pretty=%s | grep -oE '\b[0-9]+\.[0-9]+\.[0-9]+\b')
+          TAG_NAME="v${TAG_NAME}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Skipping tag creation."
+          else
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+          fi
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tuitype-x86_64-pc-windows-gnu
+          path: artifacts/windows
+          
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tuitype-x86_64-unknown-linux-gnu
+          path: artifacts/linux
+
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release
+          cp artifacts/windows/tuitype-x64.exe release/
+          cp artifacts/linux/tuitype-linux-x64 release/
+          chmod +x release/tuitype-linux-x64
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ env.TAG_NAME }}
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: TuiType ${{ env.TAG_NAME }}
+          body: |
+            See the full changelog: https://github.com/${{ github.repository }}/compare/${{ env.TAG_NAME }}~1...${{ env.TAG_NAME }}
+          files: |
+            release/tuitype-x64.exe
+            release/tuitype-linux-x64
