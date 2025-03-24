@@ -57,6 +57,11 @@ impl TextSource {
         let (is_scrollable, total_words, initial_words) = match config.test_mode {
             TestMode::Words(count) if count > WORDS_BATCH_SIZE => (true, count, WORDS_BATCH_SIZE),
             TestMode::Words(count) => (false, count, count),
+            TestMode::Quote => {
+                let quote = Self::get_random_quote();
+                let word_count = quote.split_whitespace().count() as u32;
+                (false, word_count, word_count)
+            }
             _ => (false, 0, 0),
         };
 
@@ -174,7 +179,10 @@ impl TextSource {
         if self.is_scrollable {
             self.loaded_words >= self.total_words
         } else {
-            true
+            match self.difficulty {
+                Difficulty::Custom => true,
+                _ => self.text.split_whitespace().count() as u32 == self.total_words,
+            }
         }
     }
 
@@ -207,7 +215,12 @@ impl TextSource {
         let mut rng = thread_rng();
 
         if let Some(quote) = quotes.choose(&mut rng) {
-            quote.to_string()
+            quote
+                .trim()
+                .lines()
+                .map(|line| line.trim())
+                .collect::<Vec<&str>>()
+                .join(" ")
         } else {
             "The quick brown fox jumps over the lazy dog.".to_string()
         }

@@ -651,8 +651,39 @@ impl App {
                     }
 
                     if let TestMode::Quote = self.config.test_mode {
-                        self.typed_text.push(' ');
-                        self.cursor_pos += 1;
+                        if self.cursor_pos < target_text.len() {
+                            let target_char =
+                                target_text.chars().nth(self.cursor_pos).unwrap_or(' ');
+
+                            if target_char == ' ' {
+                                self.typed_text.push(' ');
+                                self.cursor_pos += 1;
+                            } else {
+                                let current_word_end = target_text[self.cursor_pos..]
+                                    .find(' ')
+                                    .map(|i| i + self.cursor_pos)
+                                    .unwrap_or(target_text.len());
+
+                                while self.cursor_pos < current_word_end {
+                                    self.typed_text.push('x');
+                                    self.cursor_pos += 1;
+                                    self.stats.incorrect_chars += 1;
+                                }
+
+                                self.typed_text.push(' ');
+                                self.cursor_pos += 1;
+
+                                if self.config.end_on_first_error {
+                                    self.complete_test();
+                                    return Ok(());
+                                }
+                            }
+                        } else {
+                            if self.text_source.is_complete() {
+                                self.complete_test();
+                                return Ok(());
+                            }
+                        }
                     } else {
                         if self.cursor_pos < target_text.len() {
                             let current_word_end = target_text[self.cursor_pos..]
@@ -802,6 +833,10 @@ impl App {
             self.config.save().ok();
         }
 
+        if matches!(self.config.test_mode, TestMode::Quote) {
+            self.config.last_test_text = None;
+        }
+
         self.text_source = TextSource::new(&self.config);
         self.typed_text.clear();
         self.cursor_pos = 0;
@@ -811,6 +846,10 @@ impl App {
         self.key_timestamps.clear();
         self.test_complete = false;
         self.test_end_reason = None;
+
+        if let TestMode::Timed(seconds) = self.config.test_mode {
+            self.time_remaining = Some(seconds);
+        }
     }
 
     pub fn set_theme(&mut self, theme_type: ThemeType) {

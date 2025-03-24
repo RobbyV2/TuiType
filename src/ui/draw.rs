@@ -192,9 +192,16 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
     }
 
     let text = Text::from(Line::from(styled_spans));
+    let is_quote_mode = matches!(app.config.test_mode, crate::config::TestMode::Quote);
+
     let paragraph = Paragraph::new(text)
         .block(Block::default())
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: true })
+        .alignment(if is_quote_mode {
+            Alignment::Left
+        } else {
+            Alignment::Left
+        });
 
     frame.render_widget(paragraph, inner_area);
 }
