@@ -1,6 +1,6 @@
 [package]
 name = "tuitype"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "A terminal-based typing test application similar to MonkeyType"
 authors = ["RobbyV2"]
