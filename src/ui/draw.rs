@@ -289,6 +289,32 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
 
 fn render_typing_text(app: &App, frame: &mut Frame, typing_area: Rect) {
     let target_text = app.text_source.full_text();
+
+    let is_quote_mode = matches!(app.config.test_mode, crate::config::TestMode::Quote);
+    let display_window_size = typing_area.width as usize * 4;
+
+    let (start_pos, target_display_text) =
+        if is_quote_mode && target_text.len() > display_window_size {
+            let visible_start = if app.cursor_pos > display_window_size / 2 {
+                let ideal_start = app.cursor_pos - display_window_size / 2;
+                if ideal_start > 0 {
+                    match target_text[..ideal_start].rfind(' ') {
+                        Some(pos) => pos + 1,
+                        None => 0,
+                    }
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
+
+            let visible_end = (visible_start + display_window_size).min(target_text.len());
+            (visible_start, &target_text[visible_start..visible_end])
+        } else {
+            (0, target_text)
+        };
+
     let mut styled_spans = Vec::new();
 
     let correct_style = Style::default().fg(Color::Rgb(
@@ -309,15 +335,16 @@ fn render_typing_text(app: &App, frame: &mut Frame, typing_area: Rect) {
         app.theme.pending.2,
     ));
 
-    for (i, ch) in target_text.chars().enumerate() {
-        let span = if i < app.typed_text.len() {
-            let typed_char = app.typed_text.chars().nth(i).unwrap();
+    for (i, ch) in target_display_text.chars().enumerate() {
+        let absolute_pos = start_pos + i;
+        let span = if absolute_pos < app.typed_text.len() {
+            let typed_char = app.typed_text.chars().nth(absolute_pos).unwrap();
             if typed_char == ch {
                 Span::styled(ch.to_string(), correct_style)
             } else {
                 Span::styled(ch.to_string(), incorrect_style)
             }
-        } else if i == app.cursor_pos {
+        } else if absolute_pos == app.cursor_pos {
             Span::styled(
                 ch.to_string(),
                 Style::default()
@@ -370,16 +397,11 @@ fn render_typing_text(app: &App, frame: &mut Frame, typing_area: Rect) {
     }
 
     let text = Text::from(Line::from(styled_spans));
-    let is_quote_mode = matches!(app.config.test_mode, crate::config::TestMode::Quote);
 
     let paragraph = Paragraph::new(text)
         .block(Block::default())
         .wrap(Wrap { trim: true })
-        .alignment(if is_quote_mode {
-            Alignment::Left
-        } else {
-            Alignment::Left
-        });
+        .alignment(Alignment::Left);
 
     frame.render_widget(paragraph, typing_area);
 }

@@ -60,7 +60,9 @@ impl TextSource {
             TestMode::Quote => {
                 let quote = Self::get_random_quote();
                 let word_count = quote.split_whitespace().count() as u32;
-                (false, word_count, word_count)
+
+                let is_long_quote = quote.len() > TARGET_TEXT_LENGTH / 2;
+                (is_long_quote, word_count, word_count)
             }
             _ => (false, 0, 0),
         };
@@ -119,7 +121,12 @@ impl TextSource {
             WORDS_BATCH_SIZE
         };
 
-        let additional_words = Self::generate_words(self.difficulty, words_to_add);
+        let additional_words = match self.difficulty {
+            Difficulty::Custom if self.is_infinite => {
+                Self::generate_words(Difficulty::Medium, words_to_add)
+            }
+            _ => Self::generate_words(self.difficulty, words_to_add),
+        };
 
         if !self.text.is_empty() {
             self.text.push(' ');
@@ -224,5 +231,29 @@ impl TextSource {
         } else {
             "The quick brown fox jumps over the lazy dog.".to_string()
         }
+    }
+
+    pub fn trim_text_if_needed(&mut self, cursor_pos: usize) -> usize {
+        if !self.is_scrollable || cursor_pos < self.text.len() / 2 {
+            return 0;
+        }
+
+        let mut trimmed_count = 0;
+        if self.text.len() > MAX_TEXT_LENGTH {
+            let trim_start_pos = cursor_pos.saturating_sub(TARGET_TEXT_LENGTH / 4);
+
+            if trim_start_pos > 0 {
+                if let Some(space_pos) = self.text[trim_start_pos..].find(' ') {
+                    let trim_pos = trim_start_pos + space_pos + 1;
+
+                    if trim_pos < self.text.len() {
+                        trimmed_count = trim_pos;
+                        self.text = self.text[trim_pos..].to_string();
+                    }
+                }
+            }
+        }
+
+        trimmed_count
     }
 }

@@ -606,7 +606,20 @@ impl App {
                     }
                 }
 
-                if self.text_source.should_add_more_words(self.cursor_pos) {
+                if matches!(self.config.test_mode, TestMode::Quote) && self.cursor_pos > 0 {
+                    if self.cursor_pos % 10 == 0 {
+                        let trimmed = self.text_source.trim_text_if_needed(self.cursor_pos);
+                        if trimmed > 0 {
+                            self.cursor_pos -= trimmed;
+                            if trimmed < self.typed_text.len() {
+                                self.typed_text = self.typed_text[trimmed..].to_string();
+                            } else {
+                                self.typed_text.clear();
+                                self.cursor_pos = 0;
+                            }
+                        }
+                    }
+                } else if self.text_source.should_add_more_words(self.cursor_pos) {
                     let trimmed = self.text_source.add_more_words();
 
                     if trimmed > 0 && self.cursor_pos > 0 {
@@ -682,6 +695,11 @@ impl App {
                             if self.text_source.is_complete() {
                                 self.complete_test();
                                 return Ok(());
+                            }
+
+                            if self.text_source.should_add_more_words(self.cursor_pos) {
+                                let _trimmed = self.text_source.add_more_words();
+                                return self.handle_key_event(key_event);
                             }
                         }
                     } else {
