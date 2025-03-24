@@ -9,34 +9,56 @@ use ratatui::{
 };
 
 pub fn render(app: &App, frame: &mut Frame) -> anyhow::Result<()> {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(5),
-            Constraint::Length(7),
-        ])
-        .split(frame.size());
+    let min_width = 82;
+    let min_height = 22;
 
-    draw_top_menu(app, frame, chunks[0]);
+    let current_size = frame.size();
 
-    if app.warning_state != WarningState::None {
-        draw_warning(app, frame, chunks[1]);
-    } else if app.menu_state == MenuState::TestComplete {
-        draw_test_complete(app, frame, chunks[1]);
-    } else if app.menu_state != MenuState::Typing {
-        draw_menu(app, frame, chunks[1]);
-    } else {
-        draw_typing_area(app, frame, chunks[1]);
+    if current_size.width < min_width || current_size.height < min_height {
+        let message = format!(
+            "Terminal too small\nMinimum size: {}x{}\nCurrent size: {}x{}",
+            min_width, min_height, current_size.width, current_size.height
+        );
+        let paragraph = Paragraph::new(message)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD));
+        frame.render_widget(paragraph, current_size);
+        return Ok(());
     }
 
-    draw_stats(app, frame, chunks[2]);
+    let stats_height = if current_size.height < 15 { 3 } else { 6 };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(5), Constraint::Length(stats_height)])
+        .split(frame.size());
+
+    if app.warning_state != WarningState::None {
+        draw_warning(app, frame, chunks[0]);
+    } else if app.menu_state == MenuState::TestComplete {
+        draw_test_complete(app, frame, chunks[0]);
+    } else if app.menu_state != MenuState::Typing {
+        draw_menu(app, frame, chunks[0]);
+    } else {
+        draw_typing_area(app, frame, chunks[0]);
+    }
+
+    draw_stats(app, frame, chunks[1]);
 
     Ok(())
 }
 
-fn draw_top_menu(app: &App, frame: &mut Frame, area: Rect) {
-    let title = format!(
+fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
+    if area.width < 30 || area.height < 5 {
+        let text = "Terminal too small";
+        let paragraph = Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let app_title = format!(
         "TuiType{}",
         if app.config.repeat_test {
             " [Repeat Mode]"
@@ -45,7 +67,6 @@ fn draw_top_menu(app: &App, frame: &mut Frame, area: Rect) {
         }
     );
 
-    // Format current settings to display at the top
     let test_mode_str = match app.config.test_mode {
         crate::config::TestMode::Timed(secs) => format!("Mode: Timed {}s", secs),
         crate::config::TestMode::Words(count) => format!("Mode: Words {}", count),
@@ -60,10 +81,13 @@ fn draw_top_menu(app: &App, frame: &mut Frame, area: Rect) {
         crate::config::Difficulty::Custom => "Difficulty: Custom",
     };
 
-    let settings_info = format!(
-        "{}  |  {}  |  End on Error: {}  |  Press ESC for menu",
-        test_mode_str,
-        diff_str,
+    let repeat_mode_str = format!(
+        "Repeat: {}",
+        if app.config.repeat_test { "ON" } else { "OFF" }
+    );
+
+    let end_on_error_str = format!(
+        "End on Error: {}",
         if app.config.end_on_first_error {
             "Yes"
         } else {
@@ -71,45 +95,210 @@ fn draw_top_menu(app: &App, frame: &mut Frame, area: Rect) {
         }
     );
 
-    let paragraph = Paragraph::new(settings_info)
-        .block(Block::default().borders(Borders::ALL).title(title))
-        .style(Style::default().fg(Color::Rgb(
-            app.theme.text.0,
-            app.theme.text.1,
-            app.theme.text.2,
-        )))
-        .alignment(Alignment::Center);
+    let time_remaining_str = if let Some(remaining) = app.time_remaining {
+        match app.config.test_mode {
+            crate::config::TestMode::Timed(_) => format!("Time: {}s", remaining),
+            _ => String::new(),
+        }
+    } else {
+        match app.config.test_mode {
+            crate::config::TestMode::Timed(secs) => format!("Time: {}s", secs),
+            _ => String::new(),
+        }
+    };
 
-    frame.render_widget(paragraph, area);
-}
+    let stats_str = format!(
+        "WPM: {:.1} | Acc: {:.1}%",
+        app.stats.wpm, app.stats.accuracy
+    );
 
-fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
-    let title = if let Some(remaining) = app.time_remaining {
+    let single_line = if !time_remaining_str.is_empty() {
         format!(
-            "{}   |   Time: {}s   |   WPM: {:.1}   |   Accuracy: {:.1}%",
-            crate::config::test_mode_name(app.config.test_mode),
-            remaining,
-            app.stats.wpm,
-            app.stats.accuracy
+            "{} | {} | {} | {} | {} | {} | {} | Press ESC for menu",
+            app_title,
+            test_mode_str,
+            diff_str,
+            repeat_mode_str,
+            end_on_error_str,
+            stats_str,
+            time_remaining_str
         )
     } else {
         format!(
-            "{}   |   WPM: {:.1}   |   Accuracy: {:.1}%",
-            crate::config::test_mode_name(app.config.test_mode),
-            app.stats.wpm,
-            app.stats.accuracy
+            "{} | {} | {} | {} | {} | {} | Press ESC for menu",
+            app_title, test_mode_str, diff_str, repeat_mode_str, end_on_error_str, stats_str
         )
     };
 
-    let block = Block::default()
-        .title(title)
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
+    let width_available = (area.width as f32 * 0.9) as usize;
+    let use_single_line = single_line.chars().count() <= width_available;
 
-    let inner_area = block.inner(area);
+    let (block, typing_area) = if use_single_line {
+        let block = Block::default()
+            .title(single_line)
+            .title_alignment(Alignment::Left)
+            .title_style(Style::default().fg(Color::Rgb(
+                app.theme.text.0,
+                app.theme.text.1,
+                app.theme.text.2,
+            )))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
+
+        let inner_area = block.inner(area);
+        (block, inner_area)
+    } else {
+        let first_line;
+        let second_line;
+
+        if area.width < 80 {
+            let esc_menu_text = if area.width < 40 {
+                "ESC:Menu"
+            } else {
+                "Press ESC for menu"
+            };
+
+            let show_time = !time_remaining_str.is_empty();
+
+            if area.width < 40 {
+                first_line = format!("{}", app_title);
+
+                if show_time {
+                    second_line =
+                        format!("{} | {} | {}", time_remaining_str, stats_str, esc_menu_text);
+                } else {
+                    second_line = format!("{} | {}", stats_str, esc_menu_text);
+                }
+            } else if area.width < 60 {
+                if show_time {
+                    first_line = format!("{} | {}", app_title, time_remaining_str);
+                } else {
+                    first_line = format!("{} | {}", app_title, test_mode_str);
+                }
+
+                second_line = format!("{} | {}", stats_str, esc_menu_text);
+            } else {
+                if show_time {
+                    first_line = format!("{} | {} | {}", app_title, time_remaining_str, stats_str);
+
+                    second_line = format!("{} | {} | {}", test_mode_str, diff_str, esc_menu_text);
+                } else {
+                    first_line = format!("{} | {} | {}", app_title, test_mode_str, stats_str);
+                    second_line = format!("{} | {} | {}", diff_str, repeat_mode_str, esc_menu_text);
+                }
+            }
+        } else {
+            let first_row_with_config = if area.width <= 90 {
+                format!("{} | {}", app_title, test_mode_str)
+            } else {
+                format!(
+                    "{} | {} | {} | {} | {}",
+                    app_title, test_mode_str, diff_str, repeat_mode_str, end_on_error_str
+                )
+            };
+
+            let first_row_with_time = if !time_remaining_str.is_empty() {
+                format!("{} | {}", first_row_with_config, time_remaining_str)
+            } else {
+                first_row_with_config.clone()
+            };
+
+            if area.width <= 90 {
+                first_line = format!("{} | {}", first_row_with_time, stats_str);
+                second_line = format!(
+                    "{} | {} | {} | Press ESC for menu",
+                    diff_str, repeat_mode_str, end_on_error_str
+                );
+            } else if first_row_with_time.chars().count() + stats_str.chars().count() + 3
+                <= width_available
+            {
+                first_line = format!("{} | {}", first_row_with_time, stats_str);
+                second_line = format!("Press ESC for menu");
+            } else if first_row_with_config.chars().count() + time_remaining_str.chars().count() + 3
+                <= width_available
+            {
+                first_line = first_row_with_time;
+                second_line = format!("{} | Press ESC for menu", stats_str);
+            } else {
+                first_line = first_row_with_config;
+                second_line = format!("{} | Press ESC for menu", stats_str);
+            }
+        }
+
+        let block = Block::default()
+            .title(first_line)
+            .title_alignment(Alignment::Left)
+            .title_style(Style::default().fg(Color::Rgb(
+                app.theme.text.0,
+                app.theme.text.1,
+                app.theme.text.2,
+            )))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
+
+        let inner_area = block.inner(area);
+
+        if inner_area.height > 1 {
+            let settings_block = Block::default()
+                .title(second_line.clone())
+                .title_alignment(Alignment::Left)
+                .title_style(Style::default().fg(Color::Rgb(
+                    app.theme.text.0,
+                    app.theme.text.1,
+                    app.theme.text.2,
+                )))
+                .borders(Borders::NONE);
+
+            let line2_area = Rect::new(inner_area.x, inner_area.y, inner_area.width, 1);
+            frame.render_widget(settings_block, line2_area);
+
+            if area.width < 80 && inner_area.height > 2 && area.width >= 50 {
+                let third_line = format!("{}", stats_str);
+
+                let stats_block = Block::default()
+                    .title(third_line)
+                    .title_alignment(Alignment::Left)
+                    .title_style(Style::default().fg(Color::Rgb(
+                        app.theme.text.0,
+                        app.theme.text.1,
+                        app.theme.text.2,
+                    )))
+                    .borders(Borders::NONE);
+
+                let line3_area = Rect::new(inner_area.x, inner_area.y + 1, inner_area.width, 1);
+                frame.render_widget(stats_block, line3_area);
+
+                let typing_area = Rect::new(
+                    inner_area.x,
+                    inner_area.y + 2,
+                    inner_area.width,
+                    inner_area.height.saturating_sub(2),
+                );
+
+                (block, typing_area)
+            } else {
+                let typing_area = Rect::new(
+                    inner_area.x,
+                    inner_area.y + 1,
+                    inner_area.width,
+                    inner_area.height.saturating_sub(1),
+                );
+
+                (block, typing_area)
+            }
+        } else {
+            (block, inner_area)
+        }
+    };
 
     frame.render_widget(block, area);
 
+    if typing_area.height > 0 {
+        render_typing_text(app, frame, typing_area);
+    }
+}
+
+fn render_typing_text(app: &App, frame: &mut Frame, typing_area: Rect) {
     let target_text = app.text_source.full_text();
     let mut styled_spans = Vec::new();
 
@@ -203,12 +392,66 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             Alignment::Left
         });
 
-    frame.render_widget(paragraph, inner_area);
+    frame.render_widget(paragraph, typing_area);
 }
 
 fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
-    let width = area.width.saturating_sub(4);
-    let height = area.height.saturating_sub(2);
+    let app_title = format!(
+        "TuiType{}",
+        if app.config.repeat_test {
+            " [Repeat Mode]"
+        } else {
+            ""
+        }
+    );
+
+    let width = area
+        .width
+        .saturating_sub(10)
+        .min(60)
+        .max(20)
+        .min(area.width);
+    let height = area
+        .height
+        .saturating_sub(2)
+        .min(15)
+        .max(3)
+        .min(area.height);
+
+    if width < 15 || height < 3 {
+        let text = "Test Complete\nPress ENTER to restart";
+        let paragraph = Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    if height < 5 || width < 25 {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Test Complete ")
+            .title_style(Style::default().fg(Color::White));
+
+        frame.render_widget(block.clone(), area);
+        let inner_area = block.inner(area);
+
+        let results = format!(
+            "WPM: {:.1} | Acc: {:.1}%",
+            app.stats.wpm, app.stats.accuracy
+        );
+        let paragraph = Paragraph::new(vec![
+            Line::from(vec![Span::styled(
+                results,
+                Style::default().add_modifier(Modifier::BOLD),
+            )]),
+            Line::from("Press ENTER to restart"),
+        ])
+        .alignment(Alignment::Center);
+
+        frame.render_widget(paragraph, inner_area);
+        return;
+    }
 
     let x = area.x + (area.width.saturating_sub(width)) / 2;
     let y = area.y + (area.height.saturating_sub(height)) / 2;
@@ -220,8 +463,17 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::White))
-        .title(" TEST COMPLETE ");
+        .title(format!(" {} - TEST COMPLETE ", app_title))
+        .title_style(Style::default().fg(Color::Rgb(
+            app.theme.text.0,
+            app.theme.text.1,
+            app.theme.text.2,
+        )))
+        .border_style(Style::default().fg(Color::Rgb(
+            app.theme.text.0,
+            app.theme.text.1,
+            app.theme.text.2,
+        )));
 
     frame.render_widget(block.clone(), popup_area);
 
@@ -232,39 +484,59 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
     };
 
     let inner_area = block.inner(popup_area);
-    let columns = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(inner_area);
 
-    let mut results_lines = vec![
-        Line::from(vec![Span::styled(
-            "TEST RESULTS",
+    let has_two_columns = inner_area.width >= 40 && inner_area.height >= 8;
+
+    let columns = if has_two_columns {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(inner_area)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(100)])
+            .split(inner_area)
+    };
+
+    let mut results_lines = if inner_area.height < 8 {
+        vec![Line::from(vec![Span::styled(
+            format!(
+                "WPM: {:.1} | Acc: {:.1}%",
+                app.stats.wpm, app.stats.accuracy
+            ),
             Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::default(),
-        Line::from(vec![
-            Span::raw("WPM: "),
-            Span::styled(
-                format!("{:.1}", app.stats.wpm),
+        )])]
+    } else {
+        vec![
+            Line::from(vec![Span::styled(
+                "TEST RESULTS",
                 Style::default().add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::raw("Accuracy: "),
-            Span::styled(
-                format!("{:.1}%", app.stats.accuracy),
-                Style::default().add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::raw("Time: "),
-            Span::styled(
-                format!("{:.1}s", duration),
-                Style::default().add_modifier(Modifier::BOLD),
-            ),
-        ]),
-    ];
+            )]),
+            Line::default(),
+            Line::from(vec![
+                Span::raw("WPM: "),
+                Span::styled(
+                    format!("{:.1}", app.stats.wpm),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Accuracy: "),
+                Span::styled(
+                    format!("{:.1}%", app.stats.accuracy),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Time: "),
+                Span::styled(
+                    format!("{:.1}s", duration),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+            ]),
+        ]
+    };
 
     if let Some(reason) = &app.test_end_reason {
         results_lines.push(Line::default());
@@ -332,78 +604,238 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
     let divider = Block::default()
         .borders(Borders::LEFT)
         .border_style(Style::default().fg(Color::White));
-    frame.render_widget(divider, columns[1]);
+
+    if has_two_columns {
+        frame.render_widget(divider, columns[1]);
+    }
 
     let total_height = inner_area.height;
-    let content_height = results_lines.len().max(settings_lines.len()) as u16;
-    let padding_top = if total_height > content_height {
-        (total_height - content_height) / 2
+
+    if !has_two_columns {
+        let mut combined_lines = Vec::new();
+
+        if total_height < 8 {
+            combined_lines.push(Line::from(vec![Span::styled(
+                format!(
+                    "WPM: {:.1} | Acc: {:.1}%",
+                    app.stats.wpm, app.stats.accuracy
+                ),
+                Style::default().add_modifier(Modifier::BOLD),
+            )]));
+
+            if let Some(reason) = &app.test_end_reason {
+                combined_lines.push(Line::from(vec![Span::styled(
+                    reason,
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                )]));
+            }
+
+            combined_lines.push(Line::from(vec![Span::styled(
+                "Press ENTER to restart",
+                Style::default().fg(Color::Rgb(
+                    app.theme.text.0,
+                    app.theme.text.1,
+                    app.theme.text.2,
+                )),
+            )]));
+        } else {
+            combined_lines = results_lines.clone();
+            combined_lines.push(Line::default());
+            combined_lines.push(Line::default());
+            combined_lines.extend_from_slice(&settings_lines);
+        }
+
+        let content_height = combined_lines.len() as u16;
+        let padding_top = if total_height > content_height {
+            (total_height - content_height) / 2
+        } else {
+            0
+        };
+
+        let content_area = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(padding_top),
+                Constraint::Min(content_height),
+                Constraint::Min(1),
+            ])
+            .split(columns[0])[1];
+
+        let combined_paragraph = Paragraph::new(combined_lines)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+
+        frame.render_widget(combined_paragraph, content_area);
+
+        if total_height >= 8 {
+            let note_y = (columns[0].y + columns[0].height).saturating_sub(2);
+            if note_y > columns[0].y {
+                let note_area = Rect::new(columns[0].x, note_y, columns[0].width, 1);
+
+                let restart_note = Line::from(vec![Span::styled(
+                    "Press ENTER to restart typing test",
+                    Style::default().fg(Color::Rgb(
+                        app.theme.text.0,
+                        app.theme.text.1,
+                        app.theme.text.2,
+                    )),
+                )])
+                .alignment(Alignment::Center);
+
+                let note_paragraph = Paragraph::new(vec![restart_note])
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(Color::White));
+
+                frame.render_widget(note_paragraph, note_area);
+            }
+        }
     } else {
-        0
-    };
+        let content_height = results_lines.len().max(settings_lines.len()) as u16;
+        let padding_top = if total_height > content_height {
+            (total_height - content_height) / 2
+        } else {
+            0
+        };
 
-    let left_column = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(padding_top),
-            Constraint::Min(content_height),
-            Constraint::Min(1),
-        ])
-        .split(columns[0])[1];
+        let left_column = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(padding_top),
+                Constraint::Min(content_height),
+                Constraint::Min(1),
+            ])
+            .split(columns[0])[1];
 
-    let right_column = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(padding_top),
-            Constraint::Min(content_height),
-            Constraint::Min(1),
-        ])
-        .split(columns[1])[1];
+        let right_column = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(padding_top),
+                Constraint::Min(content_height),
+                Constraint::Min(1),
+            ])
+            .split(columns[1])[1];
 
-    let results_paragraph = Paragraph::new(results_lines)
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::White));
-    frame.render_widget(results_paragraph, left_column);
+        let results_paragraph = Paragraph::new(results_lines)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(results_paragraph, left_column);
 
-    let settings_paragraph = Paragraph::new(settings_lines)
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::White));
-    frame.render_widget(settings_paragraph, right_column);
+        let settings_paragraph = Paragraph::new(settings_lines)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(settings_paragraph, right_column);
 
-    let footer_area = Rect::new(
-        popup_area.x,
-        popup_area.y + popup_area.height - 2,
-        popup_area.width,
-        2,
-    );
+        if columns[0].height > content_height + padding_top + 2 {
+            let restart_note = Line::from(vec![Span::styled(
+                "Press ENTER to restart typing test",
+                Style::default().fg(Color::Rgb(
+                    app.theme.text.0,
+                    app.theme.text.1,
+                    app.theme.text.2,
+                )),
+            )])
+            .alignment(Alignment::Center);
 
-    let footer_lines = vec![
-        Line::default(),
-        Line::from("Press ENTER to restart typing test").alignment(Alignment::Center),
-    ];
+            let note_area = Rect::new(
+                columns[0].x,
+                columns[0].y + columns[0].height - 2,
+                columns[0].width,
+                1,
+            );
 
-    let footer = Paragraph::new(footer_lines)
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::White));
+            let note_paragraph = Paragraph::new(vec![restart_note])
+                .alignment(Alignment::Center)
+                .style(Style::default().fg(Color::White));
 
-    frame.render_widget(footer, footer_area);
+            frame.render_widget(note_paragraph, note_area);
+        }
+    }
 }
 
 fn draw_stats(app: &App, frame: &mut Frame, area: Rect) {
+    if area.width < 8 || area.height < 2 {
+        return;
+    }
+
+    if area.width < 30 || area.height < 3 {
+        draw_compact_stats(app, frame, area);
+        return;
+    }
+
+    if area.width < 40 || area.height < 5 {
+        draw_minimal_gauge(app, frame, area);
+        return;
+    }
+
+    if area.width < 60 || area.height < 6 {
+        draw_gauges(app, frame, area);
+        return;
+    }
+
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+        .constraints([Constraint::Length(25), Constraint::Min(30)])
         .split(area);
 
     draw_gauges(app, frame, chunks[0]);
-
     draw_chart(app, frame, chunks[1]);
 }
 
+fn draw_compact_stats(app: &App, frame: &mut Frame, area: Rect) {
+    let label = format!("WPM: {:.0} Acc: {:.0}%", app.stats.wpm, app.stats.accuracy);
+    let paragraph = Paragraph::new(label)
+        .style(Style::default().fg(Color::Rgb(
+            app.theme.correct.0,
+            app.theme.correct.1,
+            app.theme.correct.2,
+        )))
+        .alignment(Alignment::Center);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_minimal_gauge(app: &App, frame: &mut Frame, area: Rect) {
+    let accuracy_value = (app.stats.accuracy.clamp(0.0, 100.0) as u16).min(100);
+    let accuracy_label = format!("{:.1}%", app.stats.accuracy);
+
+    let accuracy_gauge = Gauge::default()
+        .block(Block::default().borders(Borders::ALL).title("Acc"))
+        .gauge_style(Style::default().fg(Color::Rgb(
+            app.theme.correct.0,
+            app.theme.correct.1,
+            app.theme.correct.2,
+        )))
+        .percent(accuracy_value)
+        .label(accuracy_label);
+
+    frame.render_widget(accuracy_gauge, area);
+}
+
 fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
+    if area.width < 10 || area.height < 3 {
+        return;
+    }
+
+    let accuracy_value = (app.stats.accuracy.clamp(0.0, 100.0) as u16).min(100);
+
+    if area.height < 5 {
+        let accuracy_label = format!("Accuracy: {:.1}%", app.stats.accuracy);
+        let accuracy_gauge = Gauge::default()
+            .block(Block::default().borders(Borders::ALL).title("Accuracy"))
+            .gauge_style(Style::default().fg(Color::Rgb(
+                app.theme.correct.0,
+                app.theme.correct.1,
+                app.theme.correct.2,
+            )))
+            .percent(accuracy_value)
+            .label(accuracy_label);
+        frame.render_widget(accuracy_gauge, area);
+        return;
+    }
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Length(3), Constraint::Length(3)])
         .split(area);
 
     let accuracy_label = format!("Accuracy: {:.1}%", app.stats.accuracy);
@@ -414,11 +846,10 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
             app.theme.correct.1,
             app.theme.correct.2,
         )))
-        .percent((app.stats.accuracy as u16).min(100))
+        .percent(accuracy_value)
         .label(accuracy_label);
     frame.render_widget(accuracy_gauge, chunks[0]);
 
-    // Calculate progress for the current test
     let progress = if app.text_source.full_text().is_empty() {
         0
     } else if app.text_source.is_scrollable {
@@ -434,8 +865,9 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
             / app.text_source.full_text().len()) as u16
     };
 
-    // Always display progress as a visible bar
-    let progress_label = format!("Progress: {}%", progress);
+    let progress_value = progress.min(100);
+
+    let progress_label = format!("Progress: {}%", progress_value);
     let progress_gauge = Gauge::default()
         .block(Block::default().borders(Borders::ALL).title("Progress"))
         .gauge_style(Style::default().fg(Color::Rgb(
@@ -443,27 +875,43 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
             app.theme.pending.1,
             app.theme.pending.2,
         )))
-        .percent(progress.clamp(0, 100))
+        .percent(progress_value)
         .label(progress_label);
     frame.render_widget(progress_gauge, chunks[1]);
 }
 
 fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
-    let wpm_data: Vec<(f64, f64)> = app
-        .stats
-        .wpm_samples
+    if area.width < 20 || area.height < 4 {
+        if !app.stats.wpm_samples.is_empty() {
+            let latest_wpm = app.stats.wpm_samples.last().unwrap_or(&0.0);
+            let placeholder = format!("WPM: {:.1}", latest_wpm);
+            let placeholder_widget = Paragraph::new(placeholder)
+                .block(Block::default().borders(Borders::ALL).title("Current WPM"))
+                .alignment(Alignment::Center);
+            frame.render_widget(placeholder_widget, area);
+        }
+        return;
+    }
+
+    let effective_samples = if app.stats.wpm_samples.is_empty() {
+        vec![0.0]
+    } else {
+        app.stats.wpm_samples.clone()
+    };
+
+    let wpm_data: Vec<(f64, f64)> = effective_samples
         .iter()
         .enumerate()
         .map(|(i, &wpm)| (i as f64, wpm))
         .collect();
 
     let mut max_wpm = 20.0f64;
-    for &wpm in &app.stats.wpm_samples {
+    for &wpm in &effective_samples {
         if wpm > max_wpm {
             max_wpm = wpm;
         }
     }
-    max_wpm = max_wpm.max(20.0) * 1.2;
+    max_wpm = max_wpm.max(20.0) * 1.1;
 
     let datasets = vec![Dataset::default()
         .name("WPM")
@@ -474,6 +922,8 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
             app.theme.accent.2,
         )))
         .data(&wpm_data)];
+
+    let sample_count = effective_samples.len().max(1) as f64;
 
     let chart = Chart::new(datasets)
         .block(
@@ -489,10 +939,10 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
                     app.theme.text.1,
                     app.theme.text.2,
                 )))
-                .bounds([0.0, app.stats.wpm_samples.len() as f64])
+                .bounds([0.0, sample_count.max(1.0)])
                 .labels(vec![
                     Span::raw("0"),
-                    Span::raw(format!("{}", app.stats.wpm_samples.len())),
+                    Span::raw(format!("{}", sample_count as usize)),
                 ]),
         )
         .y_axis(
@@ -515,13 +965,43 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
 }
 
 fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
+    let app_title = format!(
+        "TuiType{}",
+        if app.config.repeat_test {
+            " [Repeat Mode]"
+        } else {
+            ""
+        }
+    );
+
     let width = area.width.saturating_sub(4).min(area.width);
     let height = area.height.saturating_sub(2).min(area.height);
+
+    if width < 30 || height < 10 {
+        let menu_type = match app.menu_state {
+            MenuState::MainMenu(_) => "Main Menu",
+            MenuState::TestModeMenu(_) => "Test Mode",
+            MenuState::DifficultyMenu(_) => "Difficulty",
+            MenuState::TimeMenu(_) => "Time Limit",
+            MenuState::WordCountMenu(_) => "Word Count",
+            MenuState::ThemeMenu(_) => "Theme",
+            MenuState::Help => "Help",
+            _ => "Menu",
+        };
+
+        let text = format!("{}\nPress ESC to return", menu_type);
+        let paragraph = Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
     let x = area.x + (area.width.saturating_sub(width)) / 2;
     let y = area.y + (area.height.saturating_sub(height)) / 2;
     let menu_area = Rect::new(x, y, width, height);
 
-    let title = match app.menu_state {
+    let menu_type = match app.menu_state {
         MenuState::MainMenu(_) => "MAIN MENU",
         MenuState::TestModeMenu(_) => "TEST MODE",
         MenuState::DifficultyMenu(_) => "DIFFICULTY",
@@ -536,10 +1016,21 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
         _ => "",
     };
 
+    let title = format!(" {} - {} ", app_title, menu_type);
+
     let outline = Block::default()
         .borders(Borders::ALL)
         .title(title)
-        .border_style(Style::default().fg(Color::White));
+        .title_style(Style::default().fg(Color::Rgb(
+            app.theme.text.0,
+            app.theme.text.1,
+            app.theme.text.2,
+        )))
+        .border_style(Style::default().fg(Color::Rgb(
+            app.theme.text.0,
+            app.theme.text.1,
+            app.theme.text.2,
+        )));
 
     frame.render_widget(outline.clone(), menu_area);
 
@@ -857,8 +1348,31 @@ fn draw_warning(app: &App, frame: &mut Frame, area: Rect) {
         _ => return,
     };
 
-    let width = area.width.saturating_sub(10).min(80).max(50);
-    let height = 10.min(area.height.saturating_sub(4));
+    let app_title = format!(
+        "TuiType{}",
+        if app.config.repeat_test {
+            " [Repeat Mode]"
+        } else {
+            ""
+        }
+    );
+
+    let width = area
+        .width
+        .saturating_sub(10)
+        .min(80)
+        .max(30)
+        .min(area.width);
+    let height = 10.min(area.height.saturating_sub(4)).min(area.height);
+
+    if width < 30 || height < 5 {
+        let text = "Warning: Repeat Mode active\nPress ENTER to disable";
+        let paragraph = Paragraph::new(text)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::Red));
+        frame.render_widget(paragraph, area);
+        return;
+    }
 
     let x = area.x + (area.width.saturating_sub(width)) / 2;
     let y = area.y + (area.height.saturating_sub(height)) / 2;
@@ -871,41 +1385,53 @@ fn draw_warning(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Red))
-        .title(" REPEAT MODE WARNING ");
+        .title(format!(" {} - REPEAT MODE WARNING ", app_title));
 
     frame.render_widget(block.clone(), popup_area);
 
     let inner_area = block.inner(popup_area);
 
-    let message_lines = vec![
-        Line::from(vec![Span::styled(
-            "SETTINGS CHANGE RESTRICTED",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        )]),
-        Line::default(),
-        Line::from(action.as_str()),
-        Line::default(),
-        Line::from("Changing settings during Repeat Mode would affect test consistency."),
-        Line::default(),
-        Line::from(vec![
-            Span::styled(
-                "ENTER",
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(": Disable Repeat Mode and continue"),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                "ESC",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(": Cancel and return to previous menu"),
-        ]),
-    ];
+    let message_lines = if inner_area.height >= 8 {
+        vec![
+            Line::from(vec![Span::styled(
+                "SETTINGS CHANGE RESTRICTED",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )]),
+            Line::default(),
+            Line::from(action.as_str()),
+            Line::default(),
+            Line::from("Changing settings during Repeat Mode would affect test consistency."),
+            Line::default(),
+            Line::from(vec![
+                Span::styled(
+                    "ENTER",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": Disable Repeat Mode and continue"),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "ESC",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(": Cancel and return to previous menu"),
+            ]),
+        ]
+    } else {
+        vec![
+            Line::from(vec![Span::styled(
+                "SETTINGS RESTRICTED",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(action.as_str()),
+            Line::from("ENTER: Disable Repeat Mode"),
+            Line::from("ESC: Cancel"),
+        ]
+    };
 
     let warning_paragraph = Paragraph::new(message_lines)
         .alignment(Alignment::Center)

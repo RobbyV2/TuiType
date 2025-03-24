@@ -2,6 +2,8 @@
 
 A terminal-based typing test application similar to MonkeyType, built with Rust and the Ratatui library.
 
+![TuiType Screenshot](./assets/tuitype.png)
+
 ## Installation
 
 ### From Source
