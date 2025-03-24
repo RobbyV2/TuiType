@@ -6,6 +6,8 @@ use std::time::Instant;
 pub struct TypingStats {
     pub wpm: f64,
 
+    pub raw_wpm: f64,
+
     pub cpm: f64,
 
     pub accuracy: f64,
@@ -19,6 +21,8 @@ pub struct TypingStats {
     pub max_wpm: f64,
 
     pub wpm_samples: Vec<f64>,
+
+    pub raw_wpm_samples: Vec<f64>,
 
     #[serde(skip)]
     pub last_sample_time: Option<Instant>,
@@ -27,6 +31,7 @@ pub struct TypingStats {
 #[derive(Serialize, Deserialize)]
 pub struct SerializableTypingStats {
     pub wpm: f64,
+    pub raw_wpm: f64,
     pub cpm: f64,
     pub accuracy: f64,
     pub correct_chars: usize,
@@ -34,12 +39,14 @@ pub struct SerializableTypingStats {
     pub total_chars: usize,
     pub max_wpm: f64,
     pub wpm_samples: Vec<f64>,
+    pub raw_wpm_samples: Vec<f64>,
 }
 
 impl From<&TypingStats> for SerializableTypingStats {
     fn from(stats: &TypingStats) -> Self {
         Self {
             wpm: stats.wpm,
+            raw_wpm: stats.raw_wpm,
             cpm: stats.cpm,
             accuracy: stats.accuracy,
             correct_chars: stats.correct_chars,
@@ -47,6 +54,7 @@ impl From<&TypingStats> for SerializableTypingStats {
             total_chars: stats.total_chars,
             max_wpm: stats.max_wpm,
             wpm_samples: stats.wpm_samples.clone(),
+            raw_wpm_samples: stats.raw_wpm_samples.clone(),
         }
     }
 }
@@ -55,6 +63,7 @@ impl From<SerializableTypingStats> for TypingStats {
     fn from(stats: SerializableTypingStats) -> Self {
         Self {
             wpm: stats.wpm,
+            raw_wpm: stats.raw_wpm,
             cpm: stats.cpm,
             accuracy: stats.accuracy,
             correct_chars: stats.correct_chars,
@@ -62,6 +71,7 @@ impl From<SerializableTypingStats> for TypingStats {
             total_chars: stats.total_chars,
             max_wpm: stats.max_wpm,
             wpm_samples: stats.wpm_samples,
+            raw_wpm_samples: stats.raw_wpm_samples,
             last_sample_time: None,
         }
     }
@@ -103,6 +113,7 @@ impl TypingStats {
                 >= 1.0
         {
             self.wpm_samples.push(self.wpm);
+            self.raw_wpm_samples.push(self.raw_wpm);
             self.last_sample_time = Some(now);
         }
     }
@@ -110,8 +121,19 @@ impl TypingStats {
     pub fn calculate_wpm(&mut self, elapsed_seconds: f64) {
         if elapsed_seconds > 0.0 {
             let minutes = elapsed_seconds / 60.0;
+
+            self.raw_wpm = self.total_chars as f64 / 5.0 / minutes;
+
             self.cpm = self.correct_chars as f64 / minutes;
-            self.wpm = self.cpm / 5.0;
+
+            if self.total_chars == 0 {
+                self.wpm = 0.0;
+            } else {
+                let correct_wpm = self.correct_chars as f64 / 5.0 / minutes;
+
+                let error_rate = (self.incorrect_chars as f64) / (self.total_chars as f64).max(1.0);
+                self.wpm = correct_wpm * (1.0 - error_rate.min(0.8));
+            }
 
             if self.wpm > self.max_wpm {
                 self.max_wpm = self.wpm;
@@ -121,12 +143,17 @@ impl TypingStats {
 
     pub fn finalize(&mut self) {
         self.wpm_samples.push(self.wpm);
+        self.raw_wpm_samples.push(self.raw_wpm);
     }
 
     pub fn net_wpm(&self) -> f64 {
-        let gross_wpm = self.wpm;
+        if self.total_chars == 0 || self.correct_chars == 0 {
+            return 0.0;
+        }
+
+        let correct_wpm = self.correct_chars as f64 / 5.0;
         let error_penalty = self.incorrect_chars as f64 / 5.0;
-        (gross_wpm - error_penalty).max(0.0)
+        (correct_wpm - error_penalty).max(0.0)
     }
 
     pub fn to_json(&self) -> String {

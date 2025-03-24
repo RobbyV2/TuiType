@@ -1,7 +1,6 @@
 use crate::config::{Theme, ThemeConfig};
 use serde::{Deserialize, Serialize};
 
-/// Available theme types
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ThemeType {
     Light,
@@ -11,7 +10,6 @@ pub enum ThemeType {
     Ocean,
 }
 
-/// Light theme implementation
 struct LightTheme;
 impl Theme for LightTheme {
     fn background(&self) -> (u8, u8, u8) {
@@ -37,7 +35,6 @@ impl Theme for LightTheme {
     }
 }
 
-/// Dark theme implementation
 struct DarkTheme;
 impl Theme for DarkTheme {
     fn background(&self) -> (u8, u8, u8) {
@@ -63,7 +60,6 @@ impl Theme for DarkTheme {
     }
 }
 
-/// Sepia theme implementation
 struct SepiaTheme;
 impl Theme for SepiaTheme {
     fn background(&self) -> (u8, u8, u8) {
@@ -89,7 +85,6 @@ impl Theme for SepiaTheme {
     }
 }
 
-/// Matrix theme implementation
 struct MatrixTheme;
 impl Theme for MatrixTheme {
     fn background(&self) -> (u8, u8, u8) {
@@ -115,7 +110,6 @@ impl Theme for MatrixTheme {
     }
 }
 
-/// Ocean theme implementation
 struct OceanTheme;
 impl Theme for OceanTheme {
     fn background(&self) -> (u8, u8, u8) {

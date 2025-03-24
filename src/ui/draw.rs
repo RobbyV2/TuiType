@@ -108,8 +108,8 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
     };
 
     let stats_str = format!(
-        "WPM: {:.1} | Acc: {:.1}%",
-        app.stats.wpm, app.stats.accuracy
+        "WPM: {:.1} | Raw WPM: {:.1} | Acc: {:.1}%",
+        app.stats.wpm, app.stats.raw_wpm, app.stats.accuracy
     );
 
     let single_line = if !time_remaining_str.is_empty() {
@@ -137,11 +137,11 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
         let block = Block::default()
             .title(single_line)
             .title_alignment(Alignment::Left)
-            .title_style(Style::default().fg(Color::Rgb(
-                app.theme.text.0,
-                app.theme.text.1,
-                app.theme.text.2,
-            )))
+            .title_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            )
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
@@ -151,42 +151,31 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
         let first_line;
         let second_line;
 
-        if area.width < 80 {
-            let esc_menu_text = if area.width < 40 {
-                "ESC:Menu"
-            } else {
-                "Press ESC for menu"
-            };
-
+        if area.width < 40 {
+            let esc_menu_text = "ESC:Menu";
             let show_time = !time_remaining_str.is_empty();
 
-            if area.width < 40 {
-                first_line = format!("{}", app_title);
-
-                if show_time {
-                    second_line =
-                        format!("{} | {} | {}", time_remaining_str, stats_str, esc_menu_text);
-                } else {
-                    second_line = format!("{} | {}", stats_str, esc_menu_text);
-                }
-            } else if area.width < 60 {
-                if show_time {
-                    first_line = format!("{} | {}", app_title, time_remaining_str);
-                } else {
-                    first_line = format!("{} | {}", app_title, test_mode_str);
-                }
-
-                second_line = format!("{} | {}", stats_str, esc_menu_text);
+            if show_time {
+                first_line = format!("{} | {}", app_title, time_remaining_str);
+                second_line = format!("WPM: {:.1} | {}", app.stats.wpm, esc_menu_text);
             } else {
-                if show_time {
-                    first_line = format!("{} | {} | {}", app_title, time_remaining_str, stats_str);
-
-                    second_line = format!("{} | {} | {}", test_mode_str, diff_str, esc_menu_text);
-                } else {
-                    first_line = format!("{} | {} | {}", app_title, test_mode_str, stats_str);
-                    second_line = format!("{} | {} | {}", diff_str, repeat_mode_str, esc_menu_text);
-                }
+                first_line = format!("{}", app_title);
+                second_line = format!("WPM: {:.1} | {}", app.stats.wpm, esc_menu_text);
             }
+        } else if area.width < 60 {
+            let esc_menu_text = "Press ESC for menu";
+            let show_time = !time_remaining_str.is_empty();
+
+            if show_time {
+                first_line = format!("{} | {}", app_title, time_remaining_str);
+            } else {
+                first_line = format!("{} | {}", app_title, test_mode_str);
+            }
+
+            second_line = format!(
+                "WPM: {:.1} | Raw: {:.1} | {}",
+                app.stats.wpm, app.stats.raw_wpm, esc_menu_text
+            );
         } else {
             let first_row_with_config = if area.width <= 90 {
                 format!("{} | {}", app_title, test_mode_str)
@@ -228,11 +217,11 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
         let block = Block::default()
             .title(first_line)
             .title_alignment(Alignment::Left)
-            .title_style(Style::default().fg(Color::Rgb(
-                app.theme.text.0,
-                app.theme.text.1,
-                app.theme.text.2,
-            )))
+            .title_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            )
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
@@ -242,11 +231,11 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             let settings_block = Block::default()
                 .title(second_line.clone())
                 .title_alignment(Alignment::Left)
-                .title_style(Style::default().fg(Color::Rgb(
-                    app.theme.text.0,
-                    app.theme.text.1,
-                    app.theme.text.2,
-                )))
+                .title_style(
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                )
                 .borders(Borders::NONE);
 
             let line2_area = Rect::new(inner_area.x, inner_area.y, inner_area.width, 1);
@@ -258,11 +247,11 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
                 let stats_block = Block::default()
                     .title(third_line)
                     .title_alignment(Alignment::Left)
-                    .title_style(Style::default().fg(Color::Rgb(
-                        app.theme.text.0,
-                        app.theme.text.1,
-                        app.theme.text.2,
-                    )))
+                    .title_style(
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
+                    )
                     .borders(Borders::NONE);
 
                 let line3_area = Rect::new(inner_area.x, inner_area.y + 1, inner_area.width, 1);
@@ -437,8 +426,8 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
         let inner_area = block.inner(area);
 
         let results = format!(
-            "WPM: {:.1} | Acc: {:.1}%",
-            app.stats.wpm, app.stats.accuracy
+            "WPM: {:.1} | Raw WPM: {:.1} | Acc: {:.1}%",
+            app.stats.wpm, app.stats.raw_wpm, app.stats.accuracy
         );
         let paragraph = Paragraph::new(vec![
             Line::from(vec![Span::styled(
@@ -464,16 +453,12 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" {} - TEST COMPLETE ", app_title))
-        .title_style(Style::default().fg(Color::Rgb(
-            app.theme.text.0,
-            app.theme.text.1,
-            app.theme.text.2,
-        )))
-        .border_style(Style::default().fg(Color::Rgb(
-            app.theme.text.0,
-            app.theme.text.1,
-            app.theme.text.2,
-        )));
+        .title_style(
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(Color::White));
 
     frame.render_widget(block.clone(), popup_area);
 
@@ -502,8 +487,8 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
     let mut results_lines = if inner_area.height < 8 {
         vec![Line::from(vec![Span::styled(
             format!(
-                "WPM: {:.1} | Acc: {:.1}%",
-                app.stats.wpm, app.stats.accuracy
+                "WPM: {:.1} | Raw WPM: {:.1} | Acc: {:.1}%",
+                app.stats.wpm, app.stats.raw_wpm, app.stats.accuracy
             ),
             Style::default().add_modifier(Modifier::BOLD),
         )])]
@@ -518,6 +503,13 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
                 Span::raw("WPM: "),
                 Span::styled(
                     format!("{:.1}", app.stats.wpm),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Raw WPM: "),
+                Span::styled(
+                    format!("{:.1}", app.stats.raw_wpm),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
             ]),
@@ -617,8 +609,8 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
         if total_height < 8 {
             combined_lines.push(Line::from(vec![Span::styled(
                 format!(
-                    "WPM: {:.1} | Acc: {:.1}%",
-                    app.stats.wpm, app.stats.accuracy
+                    "WPM: {:.1} | Raw WPM: {:.1} | Acc: {:.1}%",
+                    app.stats.wpm, app.stats.raw_wpm, app.stats.accuracy
                 ),
                 Style::default().add_modifier(Modifier::BOLD),
             )]));
@@ -782,7 +774,10 @@ fn draw_stats(app: &App, frame: &mut Frame, area: Rect) {
 }
 
 fn draw_compact_stats(app: &App, frame: &mut Frame, area: Rect) {
-    let label = format!("WPM: {:.0} Acc: {:.0}%", app.stats.wpm, app.stats.accuracy);
+    let label = format!(
+        "WPM: {:.0} Raw WPM: {:.0} Acc: {:.0}%",
+        app.stats.wpm, app.stats.raw_wpm, app.stats.accuracy
+    );
     let paragraph = Paragraph::new(label)
         .style(Style::default().fg(Color::Rgb(
             app.theme.correct.0,
@@ -899,7 +894,19 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
         app.stats.wpm_samples.clone()
     };
 
+    let raw_wpm_samples = if app.stats.raw_wpm_samples.is_empty() {
+        vec![0.0]
+    } else {
+        app.stats.raw_wpm_samples.clone()
+    };
+
     let wpm_data: Vec<(f64, f64)> = effective_samples
+        .iter()
+        .enumerate()
+        .map(|(i, &wpm)| (i as f64, wpm))
+        .collect();
+
+    let raw_wpm_data: Vec<(f64, f64)> = raw_wpm_samples
         .iter()
         .enumerate()
         .map(|(i, &wpm)| (i as f64, wpm))
@@ -911,17 +918,35 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
             max_wpm = wpm;
         }
     }
+
+    for &raw_wpm in &raw_wpm_samples {
+        if raw_wpm > max_wpm {
+            max_wpm = raw_wpm;
+        }
+    }
+
     max_wpm = max_wpm.max(20.0) * 1.1;
 
-    let datasets = vec![Dataset::default()
-        .name("WPM")
-        .marker(symbols::Marker::Braille)
-        .style(Style::default().fg(Color::Rgb(
-            app.theme.accent.0,
-            app.theme.accent.1,
-            app.theme.accent.2,
-        )))
-        .data(&wpm_data)];
+    let datasets = vec![
+        Dataset::default()
+            .name("WPM")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Rgb(
+                app.theme.accent.0,
+                app.theme.accent.1,
+                app.theme.accent.2,
+            )))
+            .data(&wpm_data),
+        Dataset::default()
+            .name("Raw WPM")
+            .marker(symbols::Marker::Dot)
+            .style(Style::default().fg(Color::Rgb(
+                app.theme.incorrect.0,
+                app.theme.incorrect.1,
+                app.theme.incorrect.2,
+            )))
+            .data(&raw_wpm_data),
+    ];
 
     let sample_count = effective_samples.len().max(1) as f64;
 
@@ -1021,16 +1046,12 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
     let outline = Block::default()
         .borders(Borders::ALL)
         .title(title)
-        .title_style(Style::default().fg(Color::Rgb(
-            app.theme.text.0,
-            app.theme.text.1,
-            app.theme.text.2,
-        )))
-        .border_style(Style::default().fg(Color::Rgb(
-            app.theme.text.0,
-            app.theme.text.1,
-            app.theme.text.2,
-        )));
+        .title_style(
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(Color::White));
 
     frame.render_widget(outline.clone(), menu_area);
 
@@ -1298,6 +1319,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 )),
                 Line::default(),
                 Line::from(format!("WPM: {:.1}", app.stats.wpm)),
+                Line::from(format!("Raw WPM: {:.1}", app.stats.raw_wpm)),
                 Line::from(format!("Accuracy: {:.1}%", app.stats.accuracy)),
                 Line::from(format!("Time: {:.1} seconds", duration)),
             ];
@@ -1385,7 +1407,12 @@ fn draw_warning(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Red))
-        .title(format!(" {} - REPEAT MODE WARNING ", app_title));
+        .title(format!(" {} - REPEAT MODE WARNING ", app_title))
+        .title_style(
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        );
 
     frame.render_widget(block.clone(), popup_area);
 

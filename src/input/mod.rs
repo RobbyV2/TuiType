@@ -1,8 +1,8 @@
 use crate::AppResult;
 use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseEvent};
-use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std::env;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Event {
@@ -30,12 +30,10 @@ impl Default for KeyState {
 }
 
 impl KeyState {
-    // Temp function to determine if a key event should be processed
     fn should_process_key(&mut self, now: Instant, kind: KeyEventKind) -> bool {
         match kind {
             KeyEventKind::Press => {
                 if let Some(last_press) = self.last_press {
-                    // If last release is after last press -> new press
                     if let Some(last_release) = self.last_release {
                         if last_release > last_press {
                             self.is_held = false;
@@ -45,12 +43,12 @@ impl KeyState {
                     }
 
                     let elapsed = now.duration_since(last_press).as_millis();
-                    
-                    // stricter debounce
+
                     #[cfg(target_os = "windows")]
                     {
                         let shell = env::var("SHELL").unwrap_or_default();
-                        if shell.contains("bash") || shell.contains("zsh") || shell.contains("fish") {
+                        if shell.contains("bash") || shell.contains("zsh") || shell.contains("fish")
+                        {
                             if elapsed < 60 && self.is_held {
                                 return false;
                             }
@@ -106,7 +104,7 @@ impl InputHandler {
                 CrosstermEvent::Key(key) => {
                     let state = self.key_states.entry(key.code).or_default();
                     let should_process = state.should_process_key(now, key.kind);
-                    
+
                     if should_process {
                         return Ok(Some(Event::Key(key)));
                     }
