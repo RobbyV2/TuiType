@@ -1370,6 +1370,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 Line::from("TuiType - A Rust-based typing test application"),
                 Line::from("Created by RobbyV2 - github.com/RobbyV2/tuitype"),
                 Line::from("Licensed under MIT License"),
+                Line::from(format!("Version {}", crate::VERSION)),
                 Line::default(),
                 Line::from("Use ↑/↓ to scroll, Esc to return to menu"),
             ]
