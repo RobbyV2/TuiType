@@ -1316,15 +1316,62 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
         }
         MenuState::Help => {
             vec![
-                Line::from("KEYBOARD CONTROLS:"),
-                Line::from("Esc: Open/close menu or restart"),
-                Line::from("Tab: Restart test"),
-                Line::from("Ctrl+C: Exit"),
+                Line::from(vec![Span::styled(
+                    "KEYBOARD CONTROLS",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("• Esc: Open menu / Close menu / Cancel current test"),
+                Line::from("• Tab: Quick restart test"),
+                Line::from("• Ctrl+C: Exit application"),
+                Line::from("• ↑/↓: Navigate menus or scroll help"),
+                Line::from("• Enter: Select menu option"),
                 Line::default(),
-                Line::from("TEST MODES:"),
-                Line::from("Timed: Type as many words as possible"),
-                Line::from("Words: Type a specific number of words"),
-                Line::from("Quote: Type a random quote"),
+                Line::from(vec![Span::styled(
+                    "TEST MODES",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("• Timed: Type as many words as possible within time limit"),
+                Line::from("• Words: Type a specific number of words"),
+                Line::from("• Quote: Type a random quote"),
+                Line::from("• Custom: Type custom text (set in config file)"),
+                Line::default(),
+                Line::from(vec![Span::styled(
+                    "SETTINGS",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("• Repeat Mode: Practice the same text multiple times"),
+                Line::from("  - Perfect for practicing problematic words"),
+                Line::from("  - Settings cannot be changed while active"),
+                Line::from("• End on First Error: Test stops on first mistake"),
+                Line::from("  - Useful for perfect accuracy practice"),
+                Line::default(),
+                Line::from(vec![Span::styled(
+                    "STATISTICS",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("• WPM (Words Per Minute): Based on 5 characters = 1 word"),
+                Line::from("• Raw WPM: Speed without error penalty"),
+                Line::from("• Accuracy: Percentage of correct characters"),
+                Line::default(),
+                Line::from(vec![Span::styled(
+                    "THEMES",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("• Light: High contrast light theme"),
+                Line::from("• Dark: High contrast dark theme"),
+                Line::from("• Sepia: Easy on the eyes, warm colors"),
+                Line::from("• Matrix: Classic green on black"),
+                Line::from("• Ocean: Calming blue tones"),
+                Line::default(),
+                Line::from(vec![Span::styled(
+                    "CREDITS",
+                    Style::default().add_modifier(Modifier::BOLD),
+                )]),
+                Line::from("TuiType - A Rust-based typing test application"),
+                Line::from("Created by RobbyV2 - github.com/RobbyV2/tuitype"),
+                Line::from("Licensed under MIT License"),
+                Line::default(),
+                Line::from("Use ↑/↓ to scroll, Esc to return to menu"),
             ]
         }
         MenuState::TestComplete => {
@@ -1375,9 +1422,17 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
         full_text.push(Line::from("Press ESC to return"));
     }
 
-    let menu_paragraph = Paragraph::new(full_text)
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::White));
+    let menu_paragraph = if app.menu_state == MenuState::Help {
+        Paragraph::new(full_text)
+            .alignment(Alignment::Left)
+            .style(Style::default().fg(Color::White))
+            .scroll((app.help_scroll_offset as u16, 0))
+            .wrap(Wrap { trim: true })
+    } else {
+        Paragraph::new(full_text)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White))
+    };
 
     frame.render_widget(menu_paragraph, inner_area);
 }

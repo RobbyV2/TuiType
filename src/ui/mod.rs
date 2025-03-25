@@ -89,6 +89,8 @@ pub struct App {
 
     pub warning_state: WarningState,
 
+    pub help_scroll_offset: usize,
+
     key_timestamps: HashMap<crossterm::event::KeyCode, Instant>,
     last_restart: Instant,
 
@@ -119,6 +121,7 @@ impl App {
             menu_state: MenuState::default(),
             time_remaining,
             warning_state: WarningState::default(),
+            help_scroll_offset: 0,
             key_timestamps: HashMap::new(),
             last_restart: Instant::now(),
             test_end_reason: None,
@@ -367,8 +370,15 @@ impl App {
                 _ => {}
             },
 
+            (MenuState::Help, KeyCode::Up) => {
+                self.help_scroll_offset = self.help_scroll_offset.saturating_sub(1);
+            }
+            (MenuState::Help, KeyCode::Down) => {
+                self.help_scroll_offset = self.help_scroll_offset.saturating_add(1);
+            }
             (MenuState::Help, KeyCode::Enter) | (MenuState::Help, KeyCode::Esc) => {
-                self.menu_state = MenuState::Typing;
+                self.help_scroll_offset = 0;
+                self.menu_state = MenuState::MainMenu(0);
             }
 
             (MenuState::TestComplete, KeyCode::Enter) | (MenuState::TestComplete, KeyCode::Esc) => {
