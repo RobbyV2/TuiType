@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     execute!(backend, LeaveAlternateScreen, DisableMouseCapture)?;
 
     if let Err(err) = res {
-        println!("Error: {:?}", err)
+        println!("Error: {err:?}")
     }
 
     Ok(())

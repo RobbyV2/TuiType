@@ -5,7 +5,7 @@ pub fn format_duration(duration: Duration) -> String {
     let minutes = total_seconds / 60;
     let seconds = total_seconds % 60;
 
-    format!("{:02}:{:02}", minutes, seconds)
+    format!("{minutes:02}:{seconds:02}")
 }
 
 pub fn format_elapsed(start_time: std::time::Instant) -> String {
@@ -13,7 +13,7 @@ pub fn format_elapsed(start_time: std::time::Instant) -> String {
 }
 
 pub fn format_wpm(wpm: f64) -> String {
-    format!("{:.1}", wpm)
+    format!("{wpm:.1}")
 }
 
 pub fn calculate_percentage(part: usize, total: usize) -> f64 {

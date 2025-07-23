@@ -1,7 +1,6 @@
 use crate::AppResult;
 use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseEvent};
 use std::collections::HashMap;
-use std::env;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
@@ -13,21 +12,13 @@ pub enum Event {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Default)]
 struct KeyState {
     last_press: Option<Instant>,
     last_release: Option<Instant>,
     is_held: bool,
 }
 
-impl Default for KeyState {
-    fn default() -> Self {
-        Self {
-            last_press: None,
-            last_release: None,
-            is_held: false,
-        }
-    }
-}
 
 impl KeyState {
     fn should_process_key(&mut self, now: Instant, kind: KeyEventKind) -> bool {

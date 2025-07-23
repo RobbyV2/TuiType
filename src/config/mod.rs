@@ -130,8 +130,8 @@ pub fn theme_name(theme_type: ThemeType) -> &'static str {
 
 pub fn test_mode_name(mode: TestMode) -> String {
     match mode {
-        TestMode::Timed(seconds) => format!("{} seconds", seconds),
-        TestMode::Words(count) => format!("{} words", count),
+        TestMode::Timed(seconds) => format!("{seconds} seconds"),
+        TestMode::Words(count) => format!("{count} words"),
         TestMode::Quote => "Quote".to_string(),
         TestMode::Custom => "Custom".to_string(),
     }
