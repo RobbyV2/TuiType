@@ -112,7 +112,7 @@ impl InputHandler {
 #[cfg(target_arch = "wasm32")]
 pub mod wasm {
     use super::*;
-    use wasm_bindgen::{prelude::*, JsCast};
+    use wasm_bindgen::{JsCast, prelude::*};
     use web_sys::{KeyboardEvent, MouseEvent as WebMouseEvent};
 
     pub struct WasmInputHandler {

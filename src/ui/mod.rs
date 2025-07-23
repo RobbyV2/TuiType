@@ -1,16 +1,16 @@
 mod draw;
 mod themes;
 
+use crate::AppResult;
 use crate::config::{Config, Difficulty, TestMode, ThemeConfig};
 use crate::input::Event;
 use crate::stats::TypingStats;
 use crate::text::TextSource;
-use crate::AppResult;
 use std::collections::HashMap;
 use std::time::Instant;
 
 pub use draw::render;
-pub use themes::{get_theme, ThemeType};
+pub use themes::{ThemeType, get_theme};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MenuState {
