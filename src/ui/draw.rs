@@ -68,8 +68,8 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
     );
 
     let test_mode_str = match app.config.test_mode {
-        crate::config::TestMode::Timed(secs) => format!("Mode: Timed {}s", secs),
-        crate::config::TestMode::Words(count) => format!("Mode: Words {}", count),
+        crate::config::TestMode::Timed(secs) => format!("Mode: Timed {secs}s"),
+        crate::config::TestMode::Words(count) => format!("Mode: Words {count}"),
         crate::config::TestMode::Quote => "Mode: Quote".to_string(),
         crate::config::TestMode::Custom => "Mode: Custom".to_string(),
     };
@@ -97,12 +97,12 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
 
     let time_remaining_str = if let Some(remaining) = app.time_remaining {
         match app.config.test_mode {
-            crate::config::TestMode::Timed(_) => format!("Time: {}s", remaining),
+            crate::config::TestMode::Timed(_) => format!("Time: {remaining}s"),
             _ => String::new(),
         }
     } else {
         match app.config.test_mode {
-            crate::config::TestMode::Timed(secs) => format!("Time: {}s", secs),
+            crate::config::TestMode::Timed(secs) => format!("Time: {secs}s"),
             _ => String::new(),
         }
     };
@@ -114,19 +114,11 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
 
     let single_line = if !time_remaining_str.is_empty() {
         format!(
-            "{} | {} | {} | {} | {} | {} | {} | Press ESC for menu",
-            app_title,
-            test_mode_str,
-            diff_str,
-            repeat_mode_str,
-            end_on_error_str,
-            stats_str,
-            time_remaining_str
+            "{app_title} | {test_mode_str} | {diff_str} | {repeat_mode_str} | {end_on_error_str} | {stats_str} | {time_remaining_str} | Press ESC for menu"
         )
     } else {
         format!(
-            "{} | {} | {} | {} | {} | {} | Press ESC for menu",
-            app_title, test_mode_str, diff_str, repeat_mode_str, end_on_error_str, stats_str
+            "{app_title} | {test_mode_str} | {diff_str} | {repeat_mode_str} | {end_on_error_str} | {stats_str} | Press ESC for menu"
         )
     };
 
@@ -156,10 +148,10 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             let show_time = !time_remaining_str.is_empty();
 
             if show_time {
-                first_line = format!("{} | {}", app_title, time_remaining_str);
+                first_line = format!("{app_title} | {time_remaining_str}");
                 second_line = format!("WPM: {:.1} | {}", app.stats.wpm, esc_menu_text);
             } else {
-                first_line = format!("{}", app_title);
+                first_line = app_title.to_string();
                 second_line = format!("WPM: {:.1} | {}", app.stats.wpm, esc_menu_text);
             }
         } else if area.width < 60 {
@@ -167,9 +159,9 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             let show_time = !time_remaining_str.is_empty();
 
             if show_time {
-                first_line = format!("{} | {}", app_title, time_remaining_str);
+                first_line = format!("{app_title} | {time_remaining_str}");
             } else {
-                first_line = format!("{} | {}", app_title, test_mode_str);
+                first_line = format!("{app_title} | {test_mode_str}");
             }
 
             second_line = format!(
@@ -178,39 +170,37 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             );
         } else {
             let first_row_with_config = if area.width <= 90 {
-                format!("{} | {}", app_title, test_mode_str)
+                format!("{app_title} | {test_mode_str}")
             } else {
                 format!(
-                    "{} | {} | {} | {} | {}",
-                    app_title, test_mode_str, diff_str, repeat_mode_str, end_on_error_str
+                    "{app_title} | {test_mode_str} | {diff_str} | {repeat_mode_str} | {end_on_error_str}"
                 )
             };
 
             let first_row_with_time = if !time_remaining_str.is_empty() {
-                format!("{} | {}", first_row_with_config, time_remaining_str)
+                format!("{first_row_with_config} | {time_remaining_str}")
             } else {
                 first_row_with_config.clone()
             };
 
             if area.width <= 90 {
-                first_line = format!("{} | {}", first_row_with_time, stats_str);
+                first_line = format!("{first_row_with_time} | {stats_str}");
                 second_line = format!(
-                    "{} | {} | {} | Press ESC for menu",
-                    diff_str, repeat_mode_str, end_on_error_str
+                    "{diff_str} | {repeat_mode_str} | {end_on_error_str} | Press ESC for menu"
                 );
             } else if first_row_with_time.chars().count() + stats_str.chars().count() + 3
                 <= width_available
             {
-                first_line = format!("{} | {}", first_row_with_time, stats_str);
-                second_line = format!("Press ESC for menu");
+                first_line = format!("{first_row_with_time} | {stats_str}");
+                second_line = "Press ESC for menu".to_string();
             } else if first_row_with_config.chars().count() + time_remaining_str.chars().count() + 3
                 <= width_available
             {
                 first_line = first_row_with_time;
-                second_line = format!("{} | Press ESC for menu", stats_str);
+                second_line = format!("{stats_str} | Press ESC for menu");
             } else {
                 first_line = first_row_with_config;
-                second_line = format!("{} | Press ESC for menu", stats_str);
+                second_line = format!("{stats_str} | Press ESC for menu");
             }
         }
 
@@ -242,7 +232,7 @@ fn draw_typing_area(app: &App, frame: &mut Frame, area: Rect) {
             frame.render_widget(settings_block, line2_area);
 
             if area.width < 80 && inner_area.height > 2 && area.width >= 50 {
-                let third_line = format!("{}", stats_str);
+                let third_line = stats_str.to_string();
 
                 let stats_block = Block::default()
                     .title(third_line)
@@ -474,7 +464,7 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" {} - TEST COMPLETE ", app_title))
+        .title(format!(" {app_title} - TEST COMPLETE "))
         .title_style(
             Style::default()
                 .fg(Color::White)
@@ -545,7 +535,7 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
             Line::from(vec![
                 Span::raw("Time: "),
                 Span::styled(
-                    format!("{:.1}s", duration),
+                    format!("{duration:.1}s"),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
             ]),
@@ -564,8 +554,8 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
     }
 
     let test_mode_str = match app.config.test_mode {
-        crate::config::TestMode::Timed(secs) => format!("Timed - {}s", secs),
-        crate::config::TestMode::Words(count) => format!("Words - {}", count),
+        crate::config::TestMode::Timed(secs) => format!("Timed - {secs}s"),
+        crate::config::TestMode::Words(count) => format!("Words - {count}"),
         crate::config::TestMode::Quote => "Quote".to_string(),
         crate::config::TestMode::Custom => "Custom".to_string(),
     };
@@ -884,7 +874,7 @@ fn draw_gauges(app: &App, frame: &mut Frame, area: Rect) {
 
     let progress_value = progress.min(100);
 
-    let progress_label = format!("Progress: {}%", progress_value);
+    let progress_label = format!("Progress: {progress_value}%");
     let progress_gauge = Gauge::default()
         .block(Block::default().borders(Borders::ALL).title("Progress"))
         .gauge_style(Style::default().fg(Color::Rgb(
@@ -901,7 +891,7 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
     if area.width < 20 || area.height < 4 {
         if !app.stats.wpm_samples.is_empty() {
             let latest_wpm = app.stats.wpm_samples.last().unwrap_or(&0.0);
-            let placeholder = format!("WPM: {:.1}", latest_wpm);
+            let placeholder = format!("WPM: {latest_wpm:.1}");
             let placeholder_widget = Paragraph::new(placeholder)
                 .block(Block::default().borders(Borders::ALL).title("Current WPM"))
                 .alignment(Alignment::Center);
@@ -1004,7 +994,7 @@ fn draw_chart(app: &App, frame: &mut Frame, area: Rect) {
                 .labels(vec![
                     Span::raw("0"),
                     Span::raw(format!("{:.0}", max_wpm / 2.0)),
-                    Span::raw(format!("{:.0}", max_wpm)),
+                    Span::raw(format!("{max_wpm:.0}")),
                 ]),
         );
 
@@ -1036,7 +1026,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
             _ => "Menu",
         };
 
-        let text = format!("{}\nPress ESC to return", menu_type);
+        let text = format!("{menu_type}\nPress ESC to return");
         let paragraph = Paragraph::new(text)
             .alignment(Alignment::Center)
             .style(Style::default().fg(Color::White));
@@ -1063,7 +1053,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
         _ => "",
     };
 
-    let title = format!(" {} - {} ", app_title, menu_type);
+    let title = format!(" {app_title} - {menu_type} ");
 
     let outline = Block::default()
         .borders(Borders::ALL)
@@ -1094,7 +1084,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
             for (item, selected) in items {
                 if selected {
                     text.push(Line::from(vec![Span::styled(
-                        format!("> {} <", item),
+                        format!("> {item} <"),
                         Style::default().add_modifier(Modifier::REVERSED),
                     )]));
                 } else {
@@ -1117,7 +1107,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|(item, selected)| {
                     if *selected {
                         Line::from(vec![Span::styled(
-                            format!("> {} <", item),
+                            format!("> {item} <"),
                             Style::default().add_modifier(Modifier::REVERSED),
                         )])
                     } else {
@@ -1139,7 +1129,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|(item, selected)| {
                     if *selected {
                         Line::from(vec![Span::styled(
-                            format!("> {} <", item),
+                            format!("> {item} <"),
                             Style::default().add_modifier(Modifier::REVERSED),
                         )])
                     } else {
@@ -1163,7 +1153,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|(item, selected)| {
                     if *selected {
                         Line::from(vec![Span::styled(
-                            format!("> {} <", item),
+                            format!("> {item} <"),
                             Style::default().add_modifier(Modifier::REVERSED),
                         )])
                     } else {
@@ -1186,7 +1176,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|(item, selected)| {
                     if *selected {
                         Line::from(vec![Span::styled(
-                            format!("> {} <", item),
+                            format!("> {item} <"),
                             Style::default().add_modifier(Modifier::REVERSED),
                         )])
                     } else {
@@ -1210,7 +1200,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 .map(|(item, selected)| {
                     if *selected {
                         Line::from(vec![Span::styled(
-                            format!("> {} <", item),
+                            format!("> {item} <"),
                             Style::default().add_modifier(Modifier::REVERSED),
                         )])
                     } else {
@@ -1283,7 +1273,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                     )]
                 } else {
                     vec![Span::styled(
-                        format!("{} ▋", input),
+                        format!("{input} ▋"),
                         Style::default().add_modifier(Modifier::BOLD),
                     )]
                 }),
@@ -1306,7 +1296,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                     )]
                 } else {
                     vec![Span::styled(
-                        format!("{} ▋", input),
+                        format!("{input} ▋"),
                         Style::default().add_modifier(Modifier::BOLD),
                     )]
                 }),
@@ -1391,7 +1381,7 @@ fn draw_menu(app: &App, frame: &mut Frame, area: Rect) {
                 Line::from(format!("WPM: {:.1}", app.stats.wpm)),
                 Line::from(format!("Raw WPM: {:.1}", app.stats.raw_wpm)),
                 Line::from(format!("Accuracy: {:.1}%", app.stats.accuracy)),
-                Line::from(format!("Time: {:.1} seconds", duration)),
+                Line::from(format!("Time: {duration:.1} seconds")),
             ];
 
             if let Some(reason) = &app.test_end_reason {
@@ -1485,7 +1475,7 @@ fn draw_warning(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Red))
-        .title(format!(" {} - REPEAT MODE WARNING ", app_title))
+        .title(format!(" {app_title} - REPEAT MODE WARNING "))
         .title_style(
             Style::default()
                 .fg(Color::White)

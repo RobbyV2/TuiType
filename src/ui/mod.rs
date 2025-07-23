@@ -207,15 +207,14 @@ impl App {
                         _ => 60,
                     };
 
-                    if !matches!(self.config.test_mode, TestMode::Timed(_)) {
-                        if !self.can_change_settings("test_mode") {
+                    if !matches!(self.config.test_mode, TestMode::Timed(_))
+                        && !self.can_change_settings("test_mode") {
                             self.set_repeat_mode_warning(
                                 "Test mode cannot be changed while Repeat Mode is active."
                                     .to_string(),
                             );
                             return Ok(());
                         }
-                    }
 
                     self.config.test_mode = TestMode::Timed(seconds);
                     self.time_remaining = Some(seconds);
@@ -253,14 +252,12 @@ impl App {
                             );
                             return Ok(());
                         }
-                    } else {
-                        if !self.can_change_settings("test_mode") {
-                            self.set_repeat_mode_warning(
-                                "Word count cannot be changed while Repeat Mode is active."
-                                    .to_string(),
-                            );
-                            return Ok(());
-                        }
+                    } else if !self.can_change_settings("test_mode") {
+                        self.set_repeat_mode_warning(
+                            "Word count cannot be changed while Repeat Mode is active."
+                                .to_string(),
+                        );
+                        return Ok(());
                     }
 
                     let words = match idx {
@@ -535,11 +532,10 @@ impl App {
     pub fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> AppResult<()> {
         use crossterm::event::{KeyCode, KeyModifiers};
 
-        if self.warning_state != WarningState::None {
-            if self.handle_warning(key_event) {
+        if self.warning_state != WarningState::None
+            && self.handle_warning(key_event) {
                 return Ok(());
             }
-        }
 
         let now = Instant::now();
         let key_code = key_event.code;
@@ -598,12 +594,10 @@ impl App {
                 if self.test_complete {
                     self.restart_test();
                     self.menu_state = MenuState::Typing;
+                } else if self.menu_state == MenuState::Typing {
+                    self.menu_state = MenuState::MainMenu(0);
                 } else {
-                    if self.menu_state == MenuState::Typing {
-                        self.menu_state = MenuState::MainMenu(0);
-                    } else {
-                        self.menu_state = MenuState::Typing;
-                    }
+                    self.menu_state = MenuState::Typing;
                 }
             }
 
@@ -813,18 +807,16 @@ impl App {
                     }
                 }
             }
-        } else {
-            if !matches!(self.config.test_mode, TestMode::Timed(_)) {
-                let is_word_limit_reached = if self.text_source.is_scrollable {
-                    self.text_source.is_complete()
-                        && self.typed_text.len() >= self.text_source.full_text().len()
-                } else {
-                    self.typed_text.len() >= self.text_source.full_text().len()
-                };
+        } else if !matches!(self.config.test_mode, TestMode::Timed(_)) {
+            let is_word_limit_reached = if self.text_source.is_scrollable {
+                self.text_source.is_complete()
+                    && self.typed_text.len() >= self.text_source.full_text().len()
+            } else {
+                self.typed_text.len() >= self.text_source.full_text().len()
+            };
 
-                if is_word_limit_reached {
-                    self.complete_test();
-                }
+            if is_word_limit_reached {
+                self.complete_test();
             }
         }
 
