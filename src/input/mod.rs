@@ -3,6 +3,9 @@ use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind, Mo
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+#[cfg(target_os = "windows")]
+use std::env;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Event {
     Tick,
