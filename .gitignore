@@ -2,3 +2,5 @@
 /debug
 /test
 **.vscode**
+/releases
+/dist

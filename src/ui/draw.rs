@@ -1,11 +1,11 @@
 use crate::ui::{App, MenuState, WarningState};
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols,
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Chart, Dataset, Gauge, Paragraph, Wrap},
-    Frame,
 };
 
 pub fn render(app: &App, frame: &mut Frame) -> anyhow::Result<()> {
@@ -406,18 +406,8 @@ fn draw_test_complete_new(app: &App, frame: &mut Frame, area: Rect) {
         }
     );
 
-    let width = area
-        .width
-        .saturating_sub(10)
-        .min(60)
-        .max(20)
-        .min(area.width);
-    let height = area
-        .height
-        .saturating_sub(2)
-        .min(15)
-        .max(3)
-        .min(area.height);
+    let width = area.width.saturating_sub(10).clamp(20, 60).min(area.width);
+    let height = area.height.saturating_sub(2).clamp(3, 15).min(area.height);
 
     if width < 15 || height < 3 {
         let text = "Test Complete\nPress ENTER to restart";
@@ -1447,12 +1437,7 @@ fn draw_warning(app: &App, frame: &mut Frame, area: Rect) {
         }
     );
 
-    let width = area
-        .width
-        .saturating_sub(10)
-        .min(80)
-        .max(30)
-        .min(area.width);
+    let width = area.width.saturating_sub(10).clamp(30, 80).min(area.width);
     let height = 10.min(area.height.saturating_sub(4)).min(area.height);
 
     if width < 30 || height < 5 {
