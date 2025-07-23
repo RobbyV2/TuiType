@@ -81,9 +81,41 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  build-deb:
+    name: Build Debian Package
+    needs: lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.88.0
+          override: true
+
+      - name: Install Just
+        run: cargo install just
+
+      - name: Install dpkg-dev
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+      - name: Build .deb package
+        run: just build-deb
+
+      - name: Upload .deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuitype-deb
+          path: releases/*.deb
+          retention-days: 7
+          if-no-files-found: error
+
   publish:
     name: Publish Release
-    needs: build
+    needs: [build, build-deb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -122,11 +154,18 @@ jobs:
           name: tuitype-x86_64-unknown-linux-gnu
           path: artifacts/linux
 
+      - name: Download Debian Package
+        uses: actions/download-artifact@v4
+        with:
+          name: tuitype-deb
+          path: artifacts/deb
+
       - name: Prepare Release Files
         run: |
           mkdir -p release
           cp artifacts/windows/tuitype-x64.exe release/
           cp artifacts/linux/tuitype-linux-x64 release/
+          cp artifacts/deb/*.deb release/
           chmod +x release/tuitype-linux-x64
 
       - name: Create Release and Upload Assets
@@ -142,3 +181,4 @@ jobs:
           files: |
             release/tuitype-x64.exe
             release/tuitype-linux-x64
+            release/*.deb

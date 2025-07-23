@@ -236,6 +236,13 @@ build-deb:
     #!/usr/bin/env bash
     set -e
     
+    # Check if dpkg-deb is available
+    if ! command -v dpkg-deb &> /dev/null; then
+        echo "Error: dpkg-deb is not available. Please install dpkg-dev package."
+        echo "On Ubuntu/Debian: sudo apt-get install dpkg-dev"
+        exit 1
+    fi
+    
     # Get version from Cargo.toml
     VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
     PACKAGE_NAME="tuitype"
@@ -339,7 +346,7 @@ build-deb:
     Source: https://github.com/RobbyV2/TuiType
     
     Files: *
-    Copyright: 2024 RobbyV2
+    Copyright: 2025 RobbyV2
     License: MIT
     
     License: MIT
@@ -364,7 +371,7 @@ build-deb:
     
     # Create simple man page
     cat > "$PACKAGE_DIR/usr/share/man/man1/tuitype.1" <<'EOF'
-    .TH TUITYPE 1 "2024" "TuiType" "User Commands"
+    .TH TUITYPE 1 "2025" "TuiType" "User Commands"
     .SH NAME
     tuitype \- terminal-based typing test application
     .SH SYNOPSIS
@@ -384,7 +391,7 @@ build-deb:
     .SH "REPORTING BUGS"
     Report bugs to: https://github.com/RobbyV2/TuiType/issues
     .SH COPYRIGHT
-    Copyright \(co 2024 RobbyV2.
+    Copyright \(co 2025 RobbyV2.
     License MIT: <https://opensource.org/licenses/MIT>.
     This is free software: you are free to change and redistribute it.
     There is NO WARRANTY, to the extent permitted by law.
@@ -394,14 +401,14 @@ build-deb:
     gzip -9n "$PACKAGE_DIR/usr/share/man/man1/tuitype.1"
     
     # Create changelog
-    cat > "$PACKAGE_DIR/usr/share/doc/$PACKAGE_NAME/changelog.Debian.gz" <<EOF
+    cat > "$PACKAGE_DIR/usr/share/doc/$PACKAGE_NAME/changelog.Debian" <<EOF
     $PACKAGE_NAME ($VERSION) unstable; urgency=medium
     
       * New upstream release.
     
      -- RobbyV2 <robbyv2@example.com>  $(date -R)
     EOF
-    gzip -9n "$PACKAGE_DIR/usr/share/doc/$PACKAGE_NAME/changelog.Debian.gz"
+    gzip -9n "$PACKAGE_DIR/usr/share/doc/$PACKAGE_NAME/changelog.Debian"
     
     # Build the .deb package
     echo "Building .deb package..."
