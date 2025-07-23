@@ -208,13 +208,13 @@ impl App {
                     };
 
                     if !matches!(self.config.test_mode, TestMode::Timed(_))
-                        && !self.can_change_settings("test_mode") {
-                            self.set_repeat_mode_warning(
-                                "Test mode cannot be changed while Repeat Mode is active."
-                                    .to_string(),
-                            );
-                            return Ok(());
-                        }
+                        && !self.can_change_settings("test_mode")
+                    {
+                        self.set_repeat_mode_warning(
+                            "Test mode cannot be changed while Repeat Mode is active.".to_string(),
+                        );
+                        return Ok(());
+                    }
 
                     self.config.test_mode = TestMode::Timed(seconds);
                     self.time_remaining = Some(seconds);
@@ -254,8 +254,7 @@ impl App {
                         }
                     } else if !self.can_change_settings("test_mode") {
                         self.set_repeat_mode_warning(
-                            "Word count cannot be changed while Repeat Mode is active."
-                                .to_string(),
+                            "Word count cannot be changed while Repeat Mode is active.".to_string(),
                         );
                         return Ok(());
                     }
@@ -532,10 +531,9 @@ impl App {
     pub fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> AppResult<()> {
         use crossterm::event::{KeyCode, KeyModifiers};
 
-        if self.warning_state != WarningState::None
-            && self.handle_warning(key_event) {
-                return Ok(());
-            }
+        if self.warning_state != WarningState::None && self.handle_warning(key_event) {
+            return Ok(());
+        }
 
         let now = Instant::now();
         let key_code = key_event.code;
