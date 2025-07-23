@@ -1,6 +1,7 @@
 use crate::AppResult;
 use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseEvent};
 use std::collections::HashMap;
+use std::env;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
