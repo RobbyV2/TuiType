@@ -47,22 +47,31 @@ pub struct ThemeConfig {
     pub cursor: (u8, u8, u8),
 }
 
+/// Configuration for the TuiType application
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
+    /// The current test mode (timed, words, quote, or custom)
     pub test_mode: TestMode,
 
+    /// The difficulty level for text generation
     pub difficulty: Difficulty,
 
+    /// Custom text to use for typing tests
     pub custom_text: Option<String>,
 
+    /// The visual theme to use
     pub theme_type: ThemeType,
 
+    /// The font style to use for display
     pub font_style: FontStyle,
 
+    /// Whether to repeat the same test after completion
     pub repeat_test: bool,
 
+    /// The text from the last completed test
     pub last_test_text: Option<String>,
 
+    /// Whether to end the test on the first error
     pub end_on_first_error: bool,
 }
 
@@ -82,6 +91,7 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Get the configuration directory path, creating it if it doesn't exist
     fn get_config_dir() -> Result<PathBuf> {
         let mut dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         dir.push("tuitype");
@@ -91,12 +101,14 @@ impl Config {
         Ok(dir)
     }
 
+    /// Get the full path to the configuration file
     fn get_config_path() -> Result<PathBuf> {
         let mut path = Self::get_config_dir()?;
         path.push("config.json");
         Ok(path)
     }
 
+    /// Save the current configuration to disk
     pub fn save(&self) -> Result<()> {
         let path = Self::get_config_path()?;
         let serialized = serde_json::to_string_pretty(self)?;
@@ -104,6 +116,7 @@ impl Config {
         Ok(())
     }
 
+    /// Load configuration from disk, creating a default config if none exists
     pub fn load() -> Result<Self> {
         let path = Self::get_config_path()?;
         if path.exists() {
