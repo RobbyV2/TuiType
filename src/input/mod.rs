@@ -95,9 +95,7 @@ impl InputHandler {
             match event::read()? {
                 CrosstermEvent::Key(key) => {
                     let state = self.key_states.entry(key.code).or_default();
-                    let should_process = state.should_process_key(now, key.kind);
-
-                    if should_process {
+                    if state.should_process_key(now, key.kind) {
                         return Ok(Some(Event::Key(key)));
                     }
                     Ok(None)

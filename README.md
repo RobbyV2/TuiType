@@ -15,7 +15,7 @@ git clone https://github.com/RobbyV2/tuitype.git
 cd tuitype
 ```
 
-1. Run the application:
+2. Run the application:
 
 ```bash
 cargo run

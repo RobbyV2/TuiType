@@ -23,7 +23,10 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let config = Config::load().unwrap_or_default();
+    let config = Config::load().unwrap_or_else(|err| {
+        eprintln!("Warning: Failed to load config: {err}. Using default configuration.");
+        Config::default()
+    });
 
     let app = App::new(config);
     let mut input_handler = InputHandler::new(Duration::from_millis(33));
